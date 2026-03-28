@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система грейдов (Hay Group) - Полное сравнение</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="header-controls">
+        <h2>Grading overview</h2>
+        
+        <label for="functionSelect">Функция:</label>
+        <select id="functionSelect">
+            <option value="all">All functions</option>
+        </select>
+
+        <button id="btnAdd" class="btn-add">+ Добавить должность</button>
+
+        <button id="comparePositionsBtn" class="btn-compare">Сравнить должности</button>
+
+        <button id="compareBtn" class="btn-compare">Сравнить семьи</button>
+
+        <button id="manageBandsBtn" class="btn-bands">Настроить бэнды</button>
+
+        <button id="exportExcelBtn" class="btn-export">Выгрузить в Excel</button>
+    </div>
+    <div class="company-filters" id="companyFilters"></div>
+
+    <div class="main-container">
+        <!-- Left Panel -->
+        <div class="structure-panel" id="structurePanel">
+            <div class="panel-header" id="panelHeader">
+                <span id="panelTitle">Шкала грейдов</span>
+                <label class="control-checkbox" id="checkboxWrapper">
+                    <input type="checkbox" id="hideEmptyGrades">
+                    Скрыть пустые
+                </label>
+            </div>
+            <div class="grades-list" id="gradesList">
+                <div class="placeholder" style="padding: 20px;">Загрузка должностей</div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="details-panel" id="detailsPanel">
+            <div class="placeholder">Выберите должность слева</div>
+        </div>
+    </div>
+
+    <!-- Modal Window -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-window">
+            <div class="modal-header" id="modalHeaderTitle">Добавление новой должности</div>
+            <div class="modal-body">
+                <div class="modal-input-group">
+                    <label>Название должности</label>
+                    <input type="text" id="modalTitle" placeholder="Например: Senior Architect">
+                </div>
+                
+                <div class="modal-input-group">
+                    <label>Семья (Функция)</label>
+                    <select id="modalFunction">
+                        <option value="">-- Выберите --</option>
+                    </select>
+                </div>
+
+                <div class="modal-input-group">
+                    <label>Компания группы</label>
+                    <select id="modalCompany">
+                        <option value="">-- Выберите --</option>
+                    </select>
+                </div>
+
+                <div class="modal-input-group">
+                    <label>Краткое описание</label>
+                    <textarea id="modalDesc" rows="2" placeholder="Основные обязанности"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div class="modal-input-group" style="flex:1;">
+                        <label>Знания (Know-How)</label>
+                        <select id="modalScoreKH"></select>
+                    </div>
+                    <div class="modal-input-group" style="flex:1;">
+                        <label>Решение проблем (%)</label>
+                        <select id="modalScorePS"></select>
+                    </div>
+                    <div class="modal-input-group" style="flex:1;">
+                        <label>Короткий профиль</label>
+                        <select id="modalShortProfile"></select>
+                    </div>
+                </div>
+
+                <div class="calculated-grade">
+                    <h3 id="modalGradeDisplay">Грейд: -</h3>
+                    <div id="modalGradeFormula" style="font-size: 12px; color: #666;">Рассчитывается автоматически от суммы баллов</div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button id="modalCancelBtn" class="btn-cancel">Отмена</button>
+                <button id="modalSaveBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="bandsModalOverlay">
+        <div class="modal-window bands-modal-window">
+            <div class="modal-header">Настройка агрегированных бэндов</div>
+            <div class="modal-body">
+                <label class="bands-visibility-toggle">
+                    <input type="checkbox" id="hideBandsInScaleCheckbox">
+                    Не выводить бэнды
+                </label>
+                <div class="bands-modal-intro">
+                    Создайте собственные бэнды и объедините в них один или несколько грейдов. Шкала грейдов останется без изменений и будет показана рядом.
+                </div>
+                <div class="bands-editor-list" id="bandsEditorList"></div>
+                <button id="addBandRowBtn" class="btn-bands-add">+ Добавить бэнд</button>
+            </div>
+
+            <div class="modal-footer">
+                <button id="bandsModalCancelBtn" class="btn-cancel">Отмена</button>
+                <button id="bandsModalSaveBtn">Сохранить бэнды</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="deleteConfirmOverlay">
+        <div class="modal-window confirm-modal-window">
+            <div class="modal-header">Удаление должности</div>
+            <div class="modal-body">
+                <div class="confirm-modal-text" id="deleteConfirmText">
+                    Вы уверены, что хотите удалить эту должность?
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="deleteConfirmCancelBtn" class="btn-cancel">Отмена</button>
+                <button id="deleteConfirmSubmitBtn" class="btn-delete-position">Удалить</button>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
+
+
+
