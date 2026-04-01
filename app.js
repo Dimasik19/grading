@@ -360,8 +360,9 @@ function escapeHtml(value) {
     return escapeXml(value);
 }
 
-function createExcelCell(value, type = "String") {
-    return `<Cell><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`;
+function createExcelCell(value, type = "String", styleId = "") {
+    const styleAttr = styleId ? ` ss:StyleID="${styleId}"` : "";
+    return `<Cell${styleAttr}><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`;
 }
 
 function createPdfComparisonCardHtml(position, index) {
@@ -575,7 +576,73 @@ function handleExportAction() {
         exportComparisonPositionsToPdf();
         return;
     }
+    if (state.isComparing) {
+        exportComparisonFamiliesToExcel();
+        return;
+    }
     exportAllPositionsToExcel();
+}
+
+function exportComparisonFamiliesToExcel() {
+    const enabledFamilies = state.families.filter((family) => state.comparisonFilters[family.id] !== false);
+    if (!enabledFamilies.length) {
+        alert("Нет данных для выгрузки.");
+        return;
+    }
+
+    const positionsByFamily = enabledFamilies.map((family) => ({
+        family,
+        positions: getFilteredPositions(family.id),
+    }));
+
+    const visibleGrades = GRADE_LEVELS.filter((grade) =>
+        positionsByFamily.some(({ positions }) => positions.some((p) => p.grade === grade))
+    );
+
+    const header = ["Грейд", ...enabledFamilies.map((f) => f.name)];
+
+    const rows = visibleGrades.map((grade) => {
+        const gradeCell = createExcelCell(grade, "Number", "grade");
+        const familyCells = positionsByFamily.map(({ positions }) => {
+            const positionsInGrade = positions.filter((p) => p.grade === grade);
+            const cellValue = positionsInGrade.map((p) => p.title).join("; ");
+            return createExcelCell(cellValue, "String", "wrap");
+        });
+        return `   <Row>${gradeCell}${familyCells.join("")}</Row>`;
+    });
+
+    const familyColumns = enabledFamilies.map(() => `   <Column ss:Width="200"/>`).join("\n");
+
+    const workbookXml = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+ <Styles>
+  <Style ss:ID="wrap"><Alignment ss:WrapText="1"/></Style>
+  <Style ss:ID="header"><Alignment ss:WrapText="1" ss:Horizontal="Center"/><Font ss:Bold="1"/><Interior ss:Color="#BDD7EE" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="grade"><Alignment ss:WrapText="1" ss:Horizontal="Justify"/><Font ss:Bold="1"/></Style>
+ </Styles>
+ <Worksheet ss:Name="Сравнение семей">
+  <Table>
+   <Column ss:Width="50"/>
+${familyColumns}
+   <Row>${header.map((value) => createExcelCell(value, "String", "header")).join("")}</Row>
+${rows.join("\n")}
+  </Table>
+ </Worksheet>
+</Workbook>`;
+
+    const blob = new Blob([workbookXml], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const link = document.createElement("a");
+    const fileDate = new Date().toISOString().slice(0, 10);
+    link.href = URL.createObjectURL(blob);
+    link.download = `comparison_families_${fileDate}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
 }
 
 function exportAllPositionsToExcel() {
@@ -1121,24 +1188,42 @@ function renderComparisonView() {
         return;
     }
 
-    const container = el("div", "comparison-container");
+    const positionsByFamily = enabledFamilies.map((family) => ({
+        family,
+        positions: getFilteredPositions(family.id),
+    }));
 
+    const visibleGrades = GRADE_LEVELS.filter((grade) =>
+        positionsByFamily.some(({ positions }) => positions.some((p) => p.grade === grade))
+    );
+
+    const table = el("table", "comparison-table");
+
+    // Header row
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    headerRow.appendChild(el("th", "comparison-th comparison-grade-th", "Грейд"));
     enabledFamilies.forEach((family) => {
-        const positions = getFilteredPositions(family.id);
-        const column = el("div", "compare-column");
-        const header = el("div", "compare-header");
-        header.append(
+        const th = el("th", "comparison-th");
+        th.append(
             el("div", "compare-family-name", family.name),
             el("div", "compare-company-name", getCompanyName(state.selectedCompany))
         );
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
-        const body = el("div", "compare-body");
+    // Body rows
+    const tbody = document.createElement("tbody");
+    visibleGrades.forEach((grade) => {
+        const tr = document.createElement("tr");
+        tr.appendChild(el("td", "comparison-grade-cell", String(grade)));
 
-        GRADE_LEVELS.forEach((grade) => {
-            const positionsInGrade = positions.filter((position) => position.grade === grade);
-            const row = el("div", "mini-grade-row");
-            const content = el("div", "mini-grade-content");
-
+        positionsByFamily.forEach(({ positions }) => {
+            const td = document.createElement("td");
+            td.className = "comparison-td";
+            const positionsInGrade = positions.filter((p) => p.grade === grade);
             if (positionsInGrade.length) {
                 positionsInGrade.forEach((position) => {
                     const card = el("div", "mini-pos-card");
@@ -1147,21 +1232,19 @@ function renderComparisonView() {
                         el("span", "", position.title),
                         el("span", "mini-emp-badge", String(position.employeesCount || 0))
                     );
-                    content.appendChild(card);
+                    td.appendChild(card);
                 });
-            } else {
-                content.appendChild(el("div", "mini-empty"));
             }
-
-            row.append(el("div", "mini-grade-num", String(grade)), content);
-            body.appendChild(row);
+            tr.appendChild(td);
         });
 
-        column.append(header, body);
-        container.appendChild(column);
+        tbody.appendChild(tr);
     });
+    table.appendChild(tbody);
 
-    dom.detailsPanel.replaceChildren(container);
+    const wrapper = el("div", "comparison-table-wrapper");
+    wrapper.appendChild(table);
+    dom.detailsPanel.replaceChildren(wrapper);
 }
 
 function getPositionById(positionId) {
